@@ -3,6 +3,107 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-Загрузка данных в датафрейм и вывод первых нескольких значений для проверки работоспособности
+
+#Загрузка данных в датафрейм и вывод первых нескольких значений для проверки работоспособности
 train = pd.read_csv("Youtube01-Psy.csv")
 train.head(10)
+
+#Вывод статистических данных
+train.describe()
+
+#Вывод названия столбцов
+train.info()
+train.describe(include=['O'])
+
+# Копирование датафрейма для преобразований
+train_encoded = train.copy()
+
+# Кодирование авторов числами
+train_encoded['AUTHOR_CODE'] = pd.factorize(train['AUTHOR'])[0]
+
+# Создание числовых признаков из контента
+train_encoded['CONTENT_LEN'] = train['CONTENT'].str.len()
+train_encoded['WORD_COUNT'] = train['CONTENT'].str.split().str.len()
+train_encoded['HAS_URL'] = train['CONTENT'].str.contains('http').astype(int)
+
+# Преобразование даты и создание числовых признаков
+train_encoded['DATE'] = pd.to_datetime(train['DATE'])
+train_encoded['DATE_CODE'] = (train_encoded['DATE'] - train_encoded['DATE'].min()).dt.days
+#ВИЗУАЛИЗАЦИИ ДЛЯ AUTHOR
+plt.figure(figsize=(12, 5))
+
+#Распределение авторов
+plt.subplot(1, 2, 1)
+train['AUTHOR'].value_counts().head(7).plot(kind='bar')
+plt.title('Топ-7 авторов')
+plt.xlabel('Автор')
+plt.ylabel('Количество')
+
+#ВИЗУАЛИЗАЦИИ ДЛЯ DATE
+plt.figure(figsize=(12, 5))
+
+#Комментарии по дням недели
+plt.subplot(1, 2, 1)
+train_encoded['DATE'].dt.day_name().value_counts().plot(kind='bar')
+plt.title('Комментарии по дням недели')
+plt.xlabel('День недели')
+plt.ylabel('Количество')
+
+#Комментарии по часам
+plt.subplot(1, 2, 2)
+train_encoded['DATE'].dt.hour.value_counts().sort_index().plot(kind='line', marker='o')
+plt.title('Активность по часам')
+plt.xlabel('Час')
+plt.ylabel('Количество')
+plt.tight_layout()
+plt.show()
+
+#ВИЗУАЛИЗАЦИИ ДЛЯ CONTENT
+plt.figure(figsize=(12, 5))
+
+#Длина комментариев
+plt.subplot(1, 2, 1)
+train_encoded['CONTENT_LEN'].hist(bins=100)
+plt.title('Длина комментариев')
+plt.xlabel('Длина (символы)')
+plt.ylabel('Частота')
+
+#Количество слов
+plt.subplot(1, 2, 2)
+train_encoded['WORD_COUNT'].hist(bins=100)
+plt.title('Количество слов')
+plt.xlabel('Слова')
+plt.ylabel('Частота')
+plt.tight_layout()
+plt.show()
+#Heatmap корреляций
+plt.figure(figsize=(8, 6))
+numeric_cols = ['CONTENT_LEN', 'WORD_COUNT', 'HAS_URL', 'CLASS']
+corr_matrix = train_encoded[numeric_cols].corr()
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
+plt.title('Корреляции признаков')
+plt.show()
+
+#зависимости длины и количества слов
+plt.figure(figsize=(8, 6))
+scatter = plt.scatter(train_encoded['CONTENT_LEN'], 
+train_encoded['WORD_COUNT'],
+c=train_encoded['CLASS'], 
+cmap='coolwarm',
+alpha=0.6)
+plt.colorbar(scatter, label='Класс (0-не спам, 1-спам)')
+plt.title('Длина комментария vs Количество слов')
+plt.xlabel('Длина комментария')
+plt.ylabel('Количество слов')
+plt.grid(True)
+plt.show()
+
+#Распределение спама по месяцам
+plt.figure(figsize=(8, 6))
+monthly_data = pd.crosstab(train_encoded['DATE'].dt.month, train_encoded['CLASS'])
+monthly_data.plot(kind='bar', stacked=True)
+plt.title('Комментарии по месяцам и классам')
+plt.xlabel('Месяц')
+plt.ylabel('Количество')
+plt.legend(['Не спам', 'Спам'])
+plt.show()
